@@ -1,5 +1,3 @@
-<!--
-
 /* Source: http://yvoschaap.com */
 /* Build first in '06 */
 /* 1/4/2015: upgraded to YouTube API v3 */
@@ -12,7 +10,7 @@ Function.prototype.bind = function(obj, args) {
         };
 
     return temp;
-}
+};
 
 var ytEmbed = {
 
@@ -546,5 +544,3 @@ var ytPlayerParams = {
         'onStateChange': ytEmbed.onPlayerStateChange
     }
 };
-
--->
