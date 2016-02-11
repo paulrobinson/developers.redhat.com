@@ -3,18 +3,27 @@
 #Fail on first error
 set -e
 
+#Reset logging timer
+SECONDS=0
+
+#Logging function that prints elapsed time
+function log {
+  echo "$(($SECONDS / 60)):$(($SECONDS % 60)) | $1"
+}
+
+
 function do_index {
 
   DESCRIPTION=$1
   URL=$2
   BODY=$3
 
-  echo "Running indexing for: $DESCRIPTION"
+  log "Running indexing for: $DESCRIPTION"
 
   RESULT=$(curl -s -X POST --user jbossorg:jbossorgjbossorg  "$URL" -d "$BODY" -H "Content-Type:application/json")
   TASK_ID=$(echo $RESULT | awk -F '"' '{ print $4 }')
   if [ "$TASK_ID" == "" ]; then
-      echo "ERROR getting task ID"
+      log "ERROR getting task ID"
       exit 1
   fi
 
@@ -24,11 +33,11 @@ function do_index {
 
     TASK_OUTCOME=$(curl -s -X GET "http://$SEARCHISKO_PORT_8080_TCP_ADDR:8080/v2/rest/tasks/task/$TASK_ID" --user jbossorg:jbossorgjbossorg | awk -F 'taskStatus' '{ print $2 }' | awk -F '"' '{ print $3 }')
 
-    echo $TASK_OUTCOME
+    log $TASK_OUTCOME
     if [ "$TASK_OUTCOME" == "FINISHED_OK" ]; then
       DONE=true
     elif [ "$TASK_OUTCOME" == "" ]; then
-      echo "ERROR getting task outcome"
+      log "ERROR getting task outcome"
       exit 1
     else
       sleep 2
@@ -63,48 +72,48 @@ searchiskousername=jbossorg
 searchiskopassword=jbossorgjbossorg
 
 
-echo "========  Waiting for Searchisko to boot ======="
+log "========  Waiting for Searchisko to boot ======="
 while [ "$(curl -sL -w "%{http_code}\\n" http://$SEARCHISKO_PORT_8080_TCP_ADDR:8080/v2/rest/sys/info -o /dev/null)" != "200" ]; do
         sleep 1
-        echo "waiting..."
+        log "waiting..."
 done;
-echo "Searchisko ready"
+log "Searchisko ready"
 
-echo ========== Initializing Elasticsearch cluster ===========
-echo Using Elasticsearch http connector URL base: ${esurl}
+log ========== Initializing Elasticsearch cluster ===========
+log Using Elasticsearch http connector URL base: ${esurl}
 
 # These steps must be run in a precise order. See README here https://github.com/searchisko/configuration/tree/v2.1.2
 cd /tmp/configuration
 
-echo "========  Getting latest Searchisko config ======="
+log "========  Getting latest Searchisko config ======="
 git pull --rebase
 
-echo ========== Runing index_templates/index_templates ===========
+log ========== Runing index_templates/index_templates ===========
 pushd index_templates/
 ./init_templates.sh ${esurl} ${esusername} ${espassword}
 popd
 
-echo ========== Runing indexes/init_indexes.sh ===========
+log ========== Runing indexes/init_indexes.sh ===========
 pushd indexes/
 ./init_indexes.sh ${esurl} ${esusername} ${espassword}
 popd
 
-echo ========== Runing mappings/init_mappings.sh ===========
+log ========== Runing mappings/init_mappings.sh ===========
 pushd mappings/
 ./init_mappings.sh ${esurl} ${esusername} ${espassword}
 popd
 
 
 
-echo ========== Initializing Searchisko ===========
-echo Using Searchisko REST API URL base: ${searchiskourl}
+log ========== Initializing Searchisko ===========
+log Using Searchisko REST API URL base: ${searchiskourl}
 
-echo ========== Runing data/provider/init-providers.sh ===========
+log ========== Runing data/provider/init-providers.sh ===========
 pushd data/provider/
 ./init-providers.sh ${searchiskourl} ${searchiskousername} ${searchiskopassword}
 popd
 
-echo ========== Runing data/config/init-config.sh ===========
+log ========== Runing data/config/init-config.sh ===========
 pushd data/config/
 ./init-config.sh ${searchiskourl} ${searchiskousername} ${searchiskopassword}
 popd
@@ -116,7 +125,7 @@ popd
 
 wait
 
-echo ========== Run indexers ===========
+log ========== Run indexers ===========
 
 #No Content Provider
 reindex_project 'sys_projects'
@@ -150,4 +159,4 @@ reindex_from_persistence 'jbossorg_project_info' &
 #reindex_from_persistence 'rht_knowledgebase_solution' &
 
 wait
-echo FINISHED!
+log FINISHED!
